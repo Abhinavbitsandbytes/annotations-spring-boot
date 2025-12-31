@@ -2659,4 +2659,218 @@ Relationship:
 
 
 
+--------------------------------------------------------------
+
+@ConditionalOnProperty
+1️⃣ Theory (what it REALLY does)
+
+@ConditionalOnProperty tells Spring:
+
+“Create this bean (or configuration) only if a specific property exists and matches a value.”
+
+It is part of Spring Boot’s conditional system and is evaluated during context startup.
+
+Key truth:
+
+No matching property → bean does NOT exist
+
+
+No warnings.
+No partial creation.
+No runtime toggling.
+
+What it depends on
+
+Properties must already be loaded into the Environment
+
+That includes:
+
+application.properties
+application.yml
+environment variables
+command-line args
+@PropertySource
+
+If the property isn’t there at startup, the condition fails.
+
+2️⃣ Code Snippets (real usage, not toy examples)
+Basic usage
+@Component
+@ConditionalOnProperty(
+    name = "feature.email.enabled",
+    havingValue = "true"
+)
+public class EmailService {
+}
+
+feature.email.enabled=true
+
+
+Result:
+
+Bean exists
+
+Change to:
+
+feature.email.enabled=false
+
+
+Result:
+
+Bean does NOT exist
+
+No bean. No injection. No fallback unless you design one.
+
+With matchIfMissing
+@ConditionalOnProperty(
+    name = "feature.sms.enabled",
+    havingValue = "true",
+    matchIfMissing = true
+)
+
+
+Meaning:
+
+Property = true → enabled
+Property missing → enabled
+Property = false → disabled
+
+This is a default-on feature flag.
+
+Use this carefully. Defaults matter.
+
+On @Configuration class (IMPORTANT)
+@Configuration
+@ConditionalOnProperty(name = "db.type", havingValue = "mysql")
+public class MysqlConfig {
+    @Bean
+    DataSource mysqlDataSource() { ... }
+}
+
+
+This is clean design:
+
+Entire configuration enabled/disabled
+Not individual beans scattered everywhere
+
+Senior rule:
+
+Prefer conditional config classes, not conditional beans everywhere.
+
+3️⃣ Interview Perspective (expected answers)
+Q1: What does @ConditionalOnProperty do?
+
+✅ Correct:
+
+Conditionally enables beans or configurations based on property values in the Environment.
+
+Q2: When is it evaluated?
+
+✅ Correct:
+
+At application startup, during context initialization.
+
+If someone says “runtime” — they’re wrong.
+
+Q3: What happens if property is missing?
+
+Depends on:
+
+matchIfMissing = false (default) → condition fails
+
+matchIfMissing = true → condition passes
+
+Q4: Can it be used with YAML?
+
+✅ Yes.
+
+feature:
+  email:
+    enabled: true
+
+
+Property key:
+
+feature.email.enabled
+
+4️⃣ Common Catches & Confusions (THIS IS WHERE BUGS HIDE)
+❌ Confusion 1: Thinking it’s runtime toggling
+
+This does NOT work:
+
+# change at runtime
+feature.email.enabled=false
+
+
+Spring will NOT remove the bean.
+
+Why?
+
+Conditions are evaluated once
+
+Spring context is immutable afterward
+
+If you need runtime toggles:
+
+Use feature-flag systems
+
+Or custom logic, not conditionals
+
+❌ Confusion 2: Using it without fallback beans
+@Autowired
+EmailService emailService; ❌
+
+
+If condition fails:
+
+Bean doesn’t exist
+
+App crashes
+
+Correct approach:
+
+Provide alternative implementation
+
+Or use @ConditionalOnMissingBean
+
+Or inject Optional<EmailService>
+
+❌ Confusion 3: Property value comparison is STRING-based
+feature.enabled=TRUE
+
+havingValue = "true" ❌
+
+
+This fails.
+
+Spring does string comparison, not boolean logic.
+
+❌ Confusion 4: Overusing it for business logic
+
+This is NOT for:
+
+@ConditionalOnProperty("user.isPremium") ❌
+
+
+Conditions are for:
+
+Infrastructure
+
+Configuration
+
+Feature wiring
+
+Not user-level decisions.
+
+5️⃣ Notes-Friendly Summary (copy exactly)
+@ConditionalOnProperty
+- Conditionally creates beans based on properties
+- Evaluated at startup
+- Property must exist in Environment
+- matchIfMissing controls default behavior
+
+
+
+
+
 
