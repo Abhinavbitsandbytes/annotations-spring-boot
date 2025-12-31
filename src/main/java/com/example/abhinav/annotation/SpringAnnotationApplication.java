@@ -22,7 +22,12 @@ public class SpringAnnotationApplication {
 		bean.getProductService().createProduct();
 
 		bean.getCartService().addToCart();
-//		error - Field cartService in com.example.abhinav.annotation.services.CategoryService required a single bean, but 2 were found:
+
+		//if @Qualifier="cart1" used in CategoryService
+		// out = adding to cart - impl 1
+
+		//if @Qualifier="cart2" used in CategoryService
+		// out = adding to cart - impl 2
 	}
 
 

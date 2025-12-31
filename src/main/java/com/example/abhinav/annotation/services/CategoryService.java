@@ -1,6 +1,7 @@
 package com.example.abhinav.annotation.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -9,7 +10,8 @@ public class CategoryService {
     @Autowired
     private ProductService productService;
 
-    @Autowired
+    @Autowired()
+    @Qualifier("cart1")
     private CartService cartService;
 
     public CartService getCartService() {

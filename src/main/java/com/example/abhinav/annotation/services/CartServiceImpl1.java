@@ -2,7 +2,7 @@ package com.example.abhinav.annotation.services;
 
 import org.springframework.stereotype.Component;
 
-@Component
+@Component("cart1")
 public class CartServiceImpl1 implements CartService{
 
     @Override
