@@ -509,3 +509,163 @@ Don’t understand proxying
 Then your app works by accident, not by design.
 
 Senior Spring devs avoid accidental behavior.
+
+
+-------------------------------------------------------------
+
+@Component
+1️⃣ Theory (what @Component really means)
+
+@Component tells Spring:
+
+“This class is a candidate for component scanning and should be managed as a bean.”
+
+That’s it.
+
+No lifecycle magic.
+No special behavior.
+No auto-transaction.
+No proxying by default.
+
+It’s just a generic Spring-managed bean.
+
+How @Component works internally
+
+Detected only via @ComponentScan
+
+Registered as a bean in the ApplicationContext
+
+Instantiated by Spring
+
+Dependency injection happens afterward
+
+If component scanning doesn’t see it → it does not exist
+
+2️⃣ Code Snippet (correct usage)
+@Component
+public class EmailService {
+
+    public void send(String msg) {
+        System.out.println("Sending email: " + msg);
+    }
+}
+
+
+Injection:
+
+@Service
+public class NotificationService {
+
+    private final EmailService emailService;
+
+    public NotificationService(EmailService emailService) {
+        this.emailService = emailService;
+    }
+}
+
+
+Bean name:
+
+Default → emailService
+
+Class name camel-cased
+
+Custom bean name
+@Component("mailService")
+public class EmailService { }
+
+
+Injection now requires matching name if qualified.
+
+3️⃣ Interview Perspective (expected answers)
+Q1: What does @Component do?
+
+✅ Correct:
+
+Marks a class as a Spring-managed component discovered via component scanning.
+
+Q2: Is @Component mandatory to create a bean?
+
+❌ No.
+
+Beans can be created via:
+
+@Bean
+
+@Import
+
+XML (legacy)
+
+Q3: What is the default scope of a @Component?
+
+✅ singleton
+
+Q4: Is @Component proxied?
+
+❌ No — unless combined with:
+
+@Transactional
+
+@Async
+
+@Cacheable
+
+AOP advice
+
+Then Spring creates proxies conditionally.
+
+4️⃣ Common Catches & Confusions (don’t ignore these)
+❌ Confusion 1: @Component vs @Bean
+
+People think they’re interchangeable. They’re not.
+
+Feature	@Component	@Bean
+Declared on	Class	Method
+Creation	Spring	Developer
+Scanning	Required	Not required
+Best for	App classes	Third-party
+
+Use the wrong one → design smells.
+
+❌ Confusion 2: Component scanning scope
+@Component
+public class UserService {}
+
+
+But main class is in another package.
+
+❌ Result: Bean not found
+Spring didn’t fail — you misconfigured scanning
+
+❌ Confusion 3: Business logic in constructors
+@Component
+public class Foo {
+    public Foo() {
+        heavyOperation(); ❌
+    }
+}
+
+
+Spring creates beans at startup.
+You just slowed boot time or caused failure.
+
+Use @PostConstruct if needed — sparingly.
+
+❌ Confusion 4: Overusing @Component
+
+Utility classes, DTOs, constants, mappers → should NOT be components.
+
+If it doesn’t:
+
+Hold behavior
+Need DI
+Have lifecycle
+
+Don’t make it a component.
+
+5️⃣ Notes-Friendly Summary (copy this)
+@Component
+- Marks class as Spring-managed bean
+- Discovered via component scanning
+- Default scope = singleton
+- No special behavior by itself
