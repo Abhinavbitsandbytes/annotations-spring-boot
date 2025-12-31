@@ -3297,6 +3297,82 @@ Table = data storage
 - Not thread-safe
 
 
+----------------------------------------------------------
+ID, GeneratedValue, Transient
+
+1️⃣ @Id
+
+Purpose
+
+Marks primary key of the entity
+
+Mandatory for every @Entity
+
+Key points
+
+Exactly one per entity
+
+Can be:
+
+Simple (Long id)
+
+Composite (@EmbeddedId, @IdClass – advanced)
+
+Senior rule
+
+No @Id → not a valid JPA entity.
+
+2️⃣ @GeneratedValue
+
+Purpose
+
+Controls how primary key is generated
+
+Common strategies (INTERVIEW-FAVORITE)
+Strategy	Meaning	Notes
+IDENTITY	DB auto-increment	❌ breaks batch inserts
+SEQUENCE	DB sequence	✅ best for PostgreSQL/Oracle
+AUTO	Provider decides	❌ unpredictable
+TABLE	Table-based	❌ slow, legacy
+@Id
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+private Long id;
+
+
+Senior rule
+
+Prefer SEQUENCE where possible.
+IDENTITY has performance costs.
+
+3️⃣ @Transient
+
+Purpose
+
+Excludes field from persistence
+
+@Transient
+private int calculatedValue;
+
+
+Important
+
+Field exists in Java
+
+❌ Not stored in DB
+
+❌ Not mapped to any column
+
+Common use
+
+Derived values
+
+Temporary calculations
+
+Do NOT confuse with
+
+transient keyword (Java serialization)
+
+
 
 
 
