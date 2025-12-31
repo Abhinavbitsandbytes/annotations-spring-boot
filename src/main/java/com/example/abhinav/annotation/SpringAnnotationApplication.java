@@ -1,13 +1,19 @@
 package com.example.abhinav.annotation;
 
+import com.example.abhinav.annotation.config.MyConfigValues;
 import com.example.abhinav.annotation.services.CategoryService;
 import com.example.abhinav.annotation.services.ProductService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
 @SpringBootApplication
-public class SpringAnnotationApplication {
+public class SpringAnnotationApplication implements CommandLineRunner {
+
+	@Autowired
+	private MyConfigValues values;
 
 	public static void main(String[] args)
 	{
@@ -28,6 +34,13 @@ public class SpringAnnotationApplication {
 
 		//if @Qualifier="cart2" used in CategoryService
 		// out = adding to cart - impl 2
+	}
+
+	@Override
+	public void run(String... args) throws Exception{
+		System.out.println(values.getAppName());
+		System.out.println(values.getAppDB());
+		System.out.println(values.getAppPort());
 	}
 
 

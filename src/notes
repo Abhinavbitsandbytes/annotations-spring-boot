@@ -2386,3 +2386,277 @@ jars → added to classpath
 Classpath = all classes + jars visible to JVM
 
 
+-------------------------------------------------------------------
+
+
+@PropertySource and @Value
+(and how they actually relate)
+1️⃣ @PropertySource — THEORY (what it REALLY does)
+
+@PropertySource tells Spring:
+
+“Load this .properties file into the Environment.”
+
+That’s it.
+
+It does NOT:
+
+Inject values
+Bind objects
+Validate properties
+
+It only adds a property source.
+
+Key mental model
+@PropertySource → loads properties
+Environment     → stores properties
+@Value          → reads properties
+
+
+Different responsibilities.
+If you mix them up, you don’t understand Spring config.
+
+2️⃣ @PropertySource — Code & Usage
+Basic usage
+@Configuration
+@PropertySource("classpath:custom.properties")
+public class AppConfig {
+}
+
+
+Now custom.properties is available to Spring.
+
+Example custom.properties:
+
+app.name=MyApp
+app.timeout=5000
+
+
+Spring does nothing with these values automatically.
+They just exist in the Environment.
+
+Multiple property files
+@PropertySource({
+  "classpath:app.properties",
+  "classpath:db.properties"
+})
+
+
+Order matters:
+
+Later sources override earlier ones
+
+Common mistake (IMPORTANT)
+@Component
+@PropertySource("classpath:custom.properties") ❌
+public class SomeComponent {}
+
+
+This works sometimes, but it’s bad design.
+
+Why?
+
+Property sources should be configuration-level
+Not scattered across components
+
+Senior rule:
+
+@PropertySource belongs in @Configuration, not random beans.
+
+3️⃣ @Value — THEORY (what it REALLY does)
+
+@Value tells Spring:
+
+“Resolve this expression from the Environment and inject it here.”
+
+It:
+
+Reads from Environment
+Supports SpEL
+Happens during bean creation
+
+Important truth
+
+@Value does NOT know where properties come from.
+It only asks:
+
+“Does this key exist in the Environment?”
+
+4️⃣ @Value — Code & Usage
+Basic usage
+@Value("${app.name}")
+private String appName;
+
+
+If app.name does not exist:
+❌ Application fails at startup
+
+Spring does NOT default silently.
+
+Default values (critical)
+@Value("${app.timeout:3000}")
+private int timeout;
+
+
+Meaning:
+
+If property missing → use 3000
+
+This prevents startup crashes.
+
+Using SpEL (dangerous but powerful)
+@Value("#{2 * 60 * 1000}")
+private int twoMinutes;
+
+
+Or mixed:
+
+@Value("#{${app.timeout} * 2}")
+private int doubleTimeout;
+
+
+Use this sparingly. Debugging SpEL is painful.
+
+5️⃣ Are @PropertySource and @Value related?
+Short answer:
+
+✅ Yes, but indirectly
+
+Correct relationship
+
+@PropertySource → loads properties
+Properties go into Environment
+@Value → reads from Environment
+
+They do not depend on each other directly.
+
+Example (complete flow)
+@Configuration
+@PropertySource("classpath:custom.properties")
+public class AppConfig {
+}
+
+@Component
+public class DemoService {
+
+    @Value("${app.name}")
+    private String appName;
+}
+
+
+Flow:
+
+Properties loaded
+Environment updated
+@Value resolves from Environment
+Bean created
+
+6️⃣ Interview Perspective (expected answers)
+Q1: What does @PropertySource do?
+
+✅ Correct:
+
+Loads external property files into the Spring Environment.
+
+Q2: What does @Value do?
+
+✅ Correct:
+
+Injects values from the Environment into bean fields or parameters.
+
+Q3: Are they mandatory in Spring Boot?
+
+❌ No.
+
+Spring Boot:
+
+Auto-loads application.properties / application.yml
+
+Makes @PropertySource mostly unnecessary
+
+Senior note:
+
+@PropertySource is more common in non-Boot or library modules.
+
+Q4: Why is @Value discouraged in large apps?
+
+Correct answer:
+
+Scattered configuration
+
+No validation
+
+Hard to refactor
+
+String-based keys
+
+This is where @ConfigurationProperties wins.
+
+7️⃣ Common Catches & Confusions (READ CAREFULLY)
+❌ Confusion 1: @Value before properties are loaded
+
+If:
+
+@PropertySource not registered
+
+Property missing
+
+❌ Startup fails.
+
+Spring does NOT lazy-load config.
+
+❌ Confusion 2: Using @Value everywhere
+@Value("${db.url}")
+@Value("${db.user}")
+@Value("${db.pass}")
+
+
+This is configuration sprawl.
+
+Senior devs call this a design smell.
+
+❌ Confusion 3: @PropertySource in Spring Boot apps
+
+In Boot:
+
+application.properties already loaded
+
+Adding @PropertySource often duplicates work
+
+Unless:
+
+Custom file
+
+Library module
+
+Non-standard location
+
+❌ Confusion 4: Property precedence ignorance
+
+Order matters:
+
+Command-line args
+
+Environment variables
+
+application.properties
+
+@PropertySource
+
+If you don’t know precedence, you’ll chase “wrong values” bugs.
+
+8️⃣ Notes-Friendly Summary (copy exactly)
+@PropertySource
+- Loads properties into Environment
+- Does NOT inject values
+
+@Value
+- Reads values from Environment
+- Injects into beans
+
+Relationship:
+@PropertySource → Environment → @Value
+
+
+
+
