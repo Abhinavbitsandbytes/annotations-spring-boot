@@ -18,6 +18,8 @@ public class SpringAnnotationApplication {
 
 		CategoryService bean = container.getBean(CategoryService.class);
 		System.out.println(bean);
+
+		bean.getProductService().createProduct();
 	}
 
 

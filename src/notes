@@ -669,3 +669,244 @@ Don’t make it a component.
 - Discovered via component scanning
 - Default scope = singleton
 - No special behavior by itself
+
+
+
+----------------------------------------------------------------------------
+
+@Autowired
+1️⃣ Theory (what @Autowired REALLY does)
+
+@Autowired tells Spring:
+
+“Inject a matching bean from the ApplicationContext here.”
+
+That’s it.
+
+Spring resolves the dependency using this order:
+
+By type
+
+By qualifier (if present)
+
+By name (as a last resort)
+
+If Spring can’t resolve exactly one bean → runtime failure.
+
+What @Autowired is NOT
+
+❌ Not a bean creator
+
+❌ Not a scanner
+
+❌ Not magic
+
+It only works after beans already exist.
+
+2️⃣ Code Snippets (correct, modern usage)
+✅ Constructor Injection (BEST PRACTICE)
+@Service
+public class OrderService {
+
+    private final PaymentService paymentService;
+
+    @Autowired
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+
+
+Why this is best:
+
+Immutable dependency
+
+Fails fast at startup
+
+Easy to test
+
+No reflection hacks
+
+🚨 Important (Spring 4.3+)
+
+If a class has only one constructor, @Autowired is optional:
+
+@Service
+public class OrderService {
+
+    private final PaymentService paymentService;
+
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+
+
+Senior-level code looks like this ☝️
+If you still add @Autowired here, it’s not wrong — just noisy.
+
+❌ Field Injection (DON’T DO THIS)
+@Service
+public class OrderService {
+
+    @Autowired
+    private PaymentService paymentService; ❌
+}
+
+
+Why this is bad:
+
+Hidden dependency
+
+Hard to test
+
+Breaks immutability
+
+Encourages sloppy design
+
+This is tolerated only in:
+
+Legacy code
+
+Prototypes
+
+Quick demos
+
+⚠️ Setter Injection (rare but valid)
+@Service
+public class OrderService {
+
+    private PaymentService paymentService;
+
+    @Autowired
+    public void setPaymentService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+
+
+Use only when:
+
+Dependency is optional
+
+You truly need reconfiguration
+
+3️⃣ Interview Perspective (expected answers)
+Q1: How does @Autowired resolve dependencies?
+
+✅ Correct answer:
+
+By type first, then by qualifier, then by bean name.
+
+Q2: What happens if multiple beans of same type exist?
+@Service
+class A implements Engine {}
+
+@Service
+class B implements Engine {}
+
+@Autowired
+private Engine engine; ❌
+
+
+❌ NoUniqueBeanDefinitionException
+
+Fix using:
+
+@Qualifier("a")
+private Engine engine;
+
+
+or
+
+@Primary
+class A implements Engine {}
+
+Q3: Is @Autowired mandatory?
+
+❌ No.
+
+Alternatives:
+
+Constructor injection without annotation
+
+@Inject (JSR-330)
+
+XML (legacy)
+
+Q4: When does injection happen?
+
+✅ After:
+
+Bean instantiation
+
+Before @PostConstruct
+
+4️⃣ Common Catches & Confusions (VERY IMPORTANT)
+❌ Confusion 1: Autowiring happens at compile time
+
+Wrong.
+
+It happens at runtime, during context initialization.
+
+That’s why errors show up only when the app starts.
+
+❌ Confusion 2: @Autowired works on non-beans
+public class Utils {
+
+    @Autowired
+    private Service service; ❌
+}
+
+
+This will never work.
+
+Why?
+
+Utils is not managed by Spring
+
+No lifecycle
+
+No injection
+
+❌ Confusion 3: Optional dependencies
+@Autowired
+private PaymentService paymentService;
+
+
+If missing → startup failure
+
+To make optional:
+
+@Autowired(required = false)
+private PaymentService paymentService;
+
+
+OR better:
+
+public OrderService(Optional<PaymentService> paymentService) { }
+
+❌ Confusion 4: Circular dependencies
+@Service
+class A {
+    @Autowired B b;
+}
+
+@Service
+class B {
+    @Autowired A a;
+}
+
+
+❌ Constructor injection → FAILS
+❌ Field injection → works but is a design smell
+
+Spring resolving it ≠ good design.
+
+5️⃣ Notes-Friendly Summary (write exactly)
+@Autowired
+- Injects existing Spring beans
+- Resolves by type first
+- Fails if no or multiple matches
+- Best used on constructors
+- Avoid field injection
