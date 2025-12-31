@@ -122,3 +122,165 @@ Default behavior:
 
 Key rule:
 - Place main class at root package
+
+
+------------------------------------------------------
+
+@Configuration
+
+1️⃣ Theory (what it really does)
+
+@Configuration marks a class as a Spring configuration class — a class that defines beans using @Bean methods.
+
+But the important part most people miss:
+
+@Configuration classes are CGLIB-proxied to enforce singleton behavior.
+
+This is not optional trivia — this is the whole point.
+
+What Spring does internally
+
+When Spring sees:
+
+@Configuration
+public class AppConfig {
+}
+
+
+It:
+
+Treats this class as a source of bean definitions
+Creates a proxy subclass of it using CGLIB
+Intercepts calls to @Bean methods
+
+Why?
+👉 To ensure one and only one bean instance per container.
+
+2️⃣ Code Snippet (correct + revealing)
+Basic usage
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public UserService userService() {
+        return new UserService();
+    }
+}
+
+
+This registers userService as a Spring bean.
+
+The part people mess up (VERY IMPORTANT)
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public Engine engine() {
+        return new Engine();
+    }
+
+    @Bean
+    public Car car() {
+        return new Car(engine());
+    }
+}
+
+What actually happens?
+
+engine() is called once
+
+Same Engine instance is injected into Car
+
+Why?
+Because Spring intercepts the method call using a proxy.
+
+3️⃣ Interview Perspective (expected answers)
+Q1: Difference between @Configuration and @Component?
+
+✅ Correct answer:
+
+Feature	@Configuration	@Component
+Bean methods	Yes (@Bean)	Yes
+Proxying	Yes (CGLIB)	❌ No
+Singleton guarantee	Yes	❌ No
+Intended use	Config class	Generic bean
+
+If they ask “why proxying?”
+Say: To preserve singleton semantics of @Bean methods
+
+Q2: What happens if you remove @Configuration?
+@Component
+public class AppConfig {
+
+
+👉 Each call to engine() creates a new instance
+👉 You silently break singleton behavior
+
+This is a classic senior-level trap question.
+
+Q3: Is @Configuration mandatory?
+
+❌ No.
+
+But without it:
+
+No proxying
+
+No inter-bean lifecycle management
+
+4️⃣ Common Catches & Confusions (read twice)
+❌ Confusion 1: "@Configuration is same as @Component"
+
+Wrong.
+
+@Configuration = specialized @Component
+with proxy-based behavior.
+
+❌ Confusion 2: Calling @Bean methods directly is safe
+
+Only safe inside a @Configuration class.
+
+Outside:
+
+new AppConfig().engine(); // NOT managed by Spring
+
+
+👉 Completely bypasses Spring.
+
+❌ Confusion 3: Final classes or methods
+@Configuration
+public final class AppConfig { ❌ }
+
+or
+
+@Bean
+public final Engine engine() { ❌ }
+
+
+❌ CGLIB cannot proxy final
+👉 Spring will either fail or downgrade behavior
+
+❌ Confusion 4: Performance concerns
+
+Yes, proxying has overhead — but:
+
+Happens at startup
+
+Negligible vs application lifecycle
+
+If someone avoids @Configuration for “performance”, they don’t know what they’re doing.
+
+5️⃣ Notes-Friendly Summary (copy-paste)
+@Configuration
+- Marks class as source of bean definitions
+- Uses CGLIB proxy
+- Ensures singleton behavior of @Bean methods
+- Intercepts inter-bean method calls
+
+Key point:
+@Configuration ≠ @Component
+
+Without @Configuration:
+- No proxying
+- New instance per @Bean call
+
