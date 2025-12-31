@@ -1624,3 +1624,180 @@ REST controllers must be explicit about errors.
 - Uses HttpMessageConverters
 
 
+---------------------------------------------------------------
+
+@GetMapping, @PostMapping, @PutMapping
+1️⃣ Theory (what they REALLY are)
+
+All three are shortcuts for @RequestMapping(method = …).
+
+Annotation	HTTP Verb	Primary Purpose
+@GetMapping	GET	Read data
+@PostMapping	POST	Create resource
+@PutMapping	PUT	Replace resource
+
+They exist for:
+
+Readability
+
+Correct REST semantics
+
+Avoiding ambiguity
+
+Internal equivalence (INTERVIEW GOLD)
+@GetMapping("/users")
+
+
+is exactly the same as:
+
+@RequestMapping(value = "/users", method = RequestMethod.GET)
+
+
+If you can’t say this in interviews, you’re guessing.
+
+2️⃣ Code Snippets (correct REST usage)
+@GetMapping – READ (idempotent, safe)
+@GetMapping("/users/{id}")
+public UserDto getUser(@PathVariable int id) {
+    return userService.find(id);
+}
+
+
+Key rules:
+
+No request body
+
+No side effects
+
+Same request → same result
+
+@PostMapping – CREATE (NOT idempotent)
+@PostMapping("/users")
+public ResponseEntity<UserDto> createUser(@RequestBody CreateUserDto dto) {
+    UserDto user = userService.create(dto);
+    return ResponseEntity.status(HttpStatus.CREATED).body(user);
+}
+
+
+Key rules:
+
+Used to create resources
+
+Server assigns ID
+
+Repeating request may create duplicates
+
+@PutMapping – UPDATE / REPLACE (idempotent)
+@PutMapping("/users/{id}")
+public UserDto updateUser(
+    @PathVariable int id,
+    @RequestBody UpdateUserDto dto
+) {
+    return userService.update(id, dto);
+}
+
+
+Key rules:
+
+Replaces entire resource
+
+Client knows resource ID
+
+Multiple calls → same result
+
+3️⃣ Interview Perspective (expected answers)
+Q1: Difference between POST and PUT?
+Aspect	POST	PUT
+Idempotent	❌ No	✅ Yes
+Resource ID	Server-generated	Client-provided
+Usage	Create	Replace/update
+
+Senior answer:
+
+POST creates, PUT replaces.
+
+Q2: Can GET have a request body?
+
+Technically allowed by HTTP spec.
+Practically? ❌ Don’t do it.
+
+Spring does not support request body with @GetMapping reliably.
+
+Q3: Why is PUT idempotent?
+
+Because:
+
+Calling PUT multiple times results in the same resource state
+
+Q4: Can POST be used for updates?
+
+Yes — but it’s poor REST design unless:
+
+Operation is non-idempotent
+
+Action-oriented endpoint (e.g. /login)
+
+4️⃣ Common Catches & Confusions (MOST IMPORTANT SECTION)
+❌ Confusion 1: Using POST for everything
+@PostMapping("/getUser") ❌
+
+
+This is RPC, not REST.
+
+Correct:
+
+@GetMapping("/users/{id}")
+
+❌ Confusion 2: PUT vs PATCH misunderstanding
+
+PUT replaces entire resource.
+
+If you send partial data:
+
+Missing fields may become null
+
+Example bug:
+
+PUT /users/1
+{
+  "name": "John"
+}
+
+
+If email exists → lost.
+
+Use PATCH for partial updates.
+
+❌ Confusion 3: GET causing side effects
+@GetMapping("/incrementCounter") ❌
+
+
+GET must be:
+
+Safe
+
+Cacheable
+
+Breaking this kills caching and proxies.
+
+❌ Confusion 4: Ignoring HTTP status codes
+
+Returning 200 OK for everything is lazy.
+
+Correct examples:
+
+POST → 201 CREATED
+
+PUT → 200 OK or 204 NO CONTENT
+
+GET → 200 OK
+
+Resource not found → 404
+
+5️⃣ Notes-Friendly Summary (copy verbatim)
+@GetMapping  -> READ (safe, idempotent)
+@PostMapping -> CREATE (not idempotent)
+@PutMapping  -> REPLACE/UPDATE (idempotent)
+
+All are shortcuts for @RequestMapping(method=...)
+
