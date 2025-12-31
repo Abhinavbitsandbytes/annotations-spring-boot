@@ -2870,6 +2870,235 @@ Not user-level decisions.
 - matchIfMissing controls default behavior
 
 
+------------------------------------------------------------------------
+
+@Bean & @Scope
+1️⃣ @Bean — recap (only what matters here)
+
+You already know this, but here’s the only definition that matters in this context:
+
+@Bean tells Spring:
+“I am explicitly defining how this object is created.”
+
+Key facts:
+
+Bean is created once by default
+Default scope = singleton
+Lifecycle is fully managed by Spring
+
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public Engine engine() {
+        return new Engine();
+    }
+}
+
+
+This gives you:
+
+One instance
+Stored in ApplicationContext
+Reused everywhere
+
+2️⃣ @Scope — THEORY (what it REALLY controls)
+
+@Scope tells Spring:
+
+“How many instances of this bean should exist, and when should they be created?”
+
+This is not academic.
+Wrong scope = memory leaks, race conditions, weird bugs.
+
+Default scope (most important rule)
+Default scope = singleton
+
+
+Applies to:
+
+@Bean
+@Component
+@Service
+@Repository
+
+If you didn’t specify a scope, it’s singleton. Period.
+
+3️⃣ Available scopes (REALISTIC ones)
+1️⃣ singleton (default, most used)
+@Bean
+@Scope("singleton")
+public Engine engine() {
+    return new Engine();
+}
+
+
+Meaning:
+
+One instance per Spring container
+Created at startup (eager by default)
+Shared across threads
+
+Senior rule:
+
+Singleton beans must be stateless or thread-safe.
+
+2️⃣ prototype (dangerous if misused)
+@Bean
+@Scope("prototype")
+public Engine engine() {
+    return new Engine();
+}
+
+
+Meaning:
+
+New instance every time it’s requested
+Spring creates it
+Spring does NOT manage its full lifecycle
+
+Important:
+
+@PreDestroy is NOT called
+Spring forgets about it after creation
+
+⚠️ Critical trap (INTERVIEW FAVORITE)
+@Service
+public class CarService {
+
+    @Autowired
+    private Engine engine; // prototype
+}
+
+
+Even if Engine is prototype:
+
+It is injected once
+You still get one instance
+
+Why?
+
+Injection happens once, at bean creation time.
+
+If you don’t know this, you don’t understand scopes.
+
+Correct way to use prototype inside singleton
+@Autowired
+private ObjectProvider<Engine> engineProvider;
+
+public Engine newEngine() {
+    return engineProvider.getObject();
+}
+
+
+This is senior-level usage.
+
+3️⃣ Web scopes (context-specific)
+
+Only available in web applications:
+
+Scope	Meaning
+request	One instance per HTTP request
+session	One instance per HTTP session
+application	One per ServletContext
+
+Example:
+
+@Component
+@Scope("request")
+public RequestContext {
+}
+
+
+⚠️ Injecting request-scoped beans into singleton beans requires proxying.
+
+4️⃣ @Scope + proxyMode (IMPORTANT)
+@Component
+@Scope(
+  value = "request",
+  proxyMode = ScopedProxyMode.TARGET_CLASS
+)
+public RequestContext {}
+
+
+Why this is needed:
+
+Singleton beans are created at startup
+Request-scoped beans exist only during a request
+Proxy defers actual object resolution
+
+If you don’t use proxies → startup failure.
+
+5️⃣ Interview Perspective (EXPECTED answers)
+Q1: What is the default scope of a Spring bean?
+
+✅ singleton
+
+Q2: Difference between singleton and prototype?
+Aspect	Singleton	Prototype
+Instances	One	Many
+Lifecycle	Fully managed	Partially managed
+Thread safety	Required	Caller responsibility
+PreDestroy	Yes	No
+Q3: Does prototype inside singleton create multiple instances?
+
+❌ No.
+
+Correct answer:
+
+Prototype is resolved only once unless explicitly requested again.
+
+Q4: When should prototype be used?
+
+Correct answer:
+
+Short-lived objects
+State-heavy objects
+Objects not shared across threads
+
+6️⃣ Common Catches & Production Bugs
+❌ Catch 1: Using prototype for “thread safety”
+
+Wrong.
+
+Prototype ≠ thread-safe.
+It just gives you more objects, not safer ones.
+
+❌ Catch 2: Using request/session scope in non-web apps
+
+This fails at startup.
+
+Scopes exist only if the context exists.
+
+❌ Catch 3: Forgetting proxyMode
+
+Injecting request/session bean into singleton without proxy → 💥
+
+❌ Catch 4: Overusing prototype
+
+Prototype beans:
+
+Increase GC pressure
+Complicate lifecycle
+Often unnecessary
+
+Singleton + immutability is usually better.
+
+7️⃣ Notes-Friendly Summary (copy exactly)
+@Bean
+- Explicitly defines bean creation
+- Default scope = singleton
+
+@Scope
+- Controls bean lifecycle and instantiation
+- Common scopes: singleton, prototype, request, session
+
+Key rule:
+Prototype inside singleton is still singleton unless requested dynamically
+
+
+
+
 
 
 
