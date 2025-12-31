@@ -22,6 +22,6 @@ public class SpringAnnotationApplication {
 	// this is because spring boot by default scans only the current package and its sub packages
 	// to make it scan the sibling package also we can use @ComponentScan annotation on the main application class
 	// @ComponentScan(basePackages = {"com.example.abhinav.annotation.config","com.example.abhinav.annotation.services"})
-	
+
 
 }
