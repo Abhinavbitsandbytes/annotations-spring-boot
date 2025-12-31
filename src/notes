@@ -284,3 +284,228 @@ Without @Configuration:
 - No proxying
 - New instance per @Bean call
 
+-------------------------------------------------------------
+
+@Bean
+1️⃣ Theory (what @Bean ACTUALLY does)
+
+@Bean tells Spring:
+
+“The object returned by this method should be managed by the Spring container.”
+
+That’s it.
+No magic. No scanning. Explicit bean registration.
+
+Key truth (write this down)
+
+@Component → implicit bean creation (via scanning)
+
+@Bean → explicit bean creation (via method call)
+
+Spring does not create the object.
+YOU create it, Spring just manages the lifecycle.
+
+Where @Bean is allowed
+
+@Bean must be inside:
+
+    @Configuration (preferred)
+    or any @Component (works, but with consequences)
+
+2️⃣ Code Snippets (correct + traps)
+Basic usage
+
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public EmailService emailService() {
+        return new EmailService();
+    }
+}
+
+
+Result:
+
+    Bean name → emailService
+    Scope → singleton (default)
+    Managed by Spring
+
+Dependency injection via method calls (IMPORTANT)
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public Engine engine() {
+        return new Engine();
+    }
+
+    @Bean
+    public Car car() {
+        return new Car(engine());
+    }
+}
+
+
+👉 Even though engine() is called inside car()
+👉 Same singleton instance is used
+
+WHY?
+Because @Configuration uses CGLIB proxying (you learned this already).
+
+❌ Classic mistake: using @Bean inside @Component
+@Component
+public class AppConfig {
+
+    @Bean
+    public Engine engine() {
+        return new Engine();
+    }
+
+    @Bean
+    public Car car() {
+        return new Car(engine());
+    }
+}
+
+
+❌ Result:
+
+engine() called twice
+Two different Engine objects
+Singleton contract broken silently
+This is a real production bug, not theory.
+
+3️⃣ Interview Perspective (expected answers)
+Q1: Difference between @Bean and @Component?
+
+✅ Correct answer:
+
+Aspect	@Bean	@Component
+Registration	Explicit	Implicit
+Location	Method	Class
+Use case	Third-party / fine control	App-level components
+Creation	Developer creates object	Spring creates object
+
+Q2: When should you prefer @Bean?
+
+✅ Use @Bean when:
+
+You don’t own the class (third-party libs)
+
+You need custom construction logic
+
+Object creation is conditional or complex
+
+Example:
+
+@Bean
+public ObjectMapper objectMapper() {
+    return JsonMapper.builder()
+        .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES)
+        .build();
+}
+
+Q3: What is the default scope of @Bean?
+
+✅ singleton
+
+If they ask how to change it:
+
+@Bean
+@Scope("prototype")
+public Engine engine() {
+    return new Engine();
+}
+
+Q4: How does Spring resolve dependencies for @Bean methods?
+
+Answer:
+
+By method calls (inside @Configuration)
+
+Or by method parameters (preferred)
+
+@Bean
+public Car car(Engine engine) {
+    return new Car(engine);
+}
+
+
+This is cleaner and safer.
+
+4️⃣ Common Catches & Confusions (THIS IS GOLD)
+❌ Confusion 1: Bean name confusion
+@Bean
+public Engine myEngine() { ... }
+
+
+Bean name = myEngine
+
+If you do:
+
+@Bean(name = "engine")
+public Engine myEngine() { ... }
+
+
+Bean name = engine
+
+Injection will fail if names mismatch.
+
+❌ Confusion 2: Multiple beans of same type
+@Bean
+public Engine petrolEngine() {}
+
+@Bean
+public Engine dieselEngine() {}
+
+
+❌ Autowiring by type fails.
+
+Fix using:
+
+@Qualifier
+
+or @Primary
+
+❌ Confusion 3: Calling @Bean method manually
+Engine e = appConfig.engine(); ❌
+
+
+This bypasses Spring unless proxied.
+Outside container = unmanaged object.
+
+❌ Confusion 4: @Bean ≠ lazy by default
+
+@Bean methods are eagerly executed at startup.
+
+To make lazy:
+
+@Bean
+@Lazy
+public Engine engine() { ... }
+
+5️⃣ Notes-Friendly Summary (copy exactly)
+@Bean
+- Explicitly registers a bean
+- Method return value becomes Spring-managed
+- Default scope = singleton
+- Bean name = method name
+- Best used inside @Configuration
+
+Key rule:
+@Bean inside @Component breaks singleton guarantees
+
+Brutally Honest Reality Check
+
+If you:
+
+Put @Bean inside random @Components
+
+Call @Bean methods manually
+
+Don’t understand proxying
+
+Then your app works by accident, not by design.
+
+Senior Spring devs avoid accidental behavior.
