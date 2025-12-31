@@ -1801,3 +1801,210 @@ Resource not found → 404
 
 All are shortcuts for @RequestMapping(method=...)
 
+
+----------------------------------------------------------
+
+@Component vs @Service vs @Repository
+1️⃣ Big Picture (the real reason these exist)
+
+All three are Spring stereotypes.
+
+Yes — technically:
+
+@Service
+@Repository
+@Controller
+@RestController
+
+
+👉 are specialized @Components
+
+But they exist for semantics + behavior, not decoration.
+
+If you don’t respect their intent, your architecture degrades.
+
+2️⃣ @Component (GENERIC — last resort)
+What it means
+
+@Component says:
+
+“This is a Spring-managed object, but it does NOT belong clearly to service, repository, or controller layers.”
+
+Use it when:
+
+Class doesn’t fit into a specific layer
+Infrastructure / helper / adapter
+Cross-cutting concerns (non-AOP)
+
+Example
+@Component
+public class UuidGenerator {
+    public String generate() {
+        return UUID.randomUUID().toString();
+    }
+}
+
+
+Correct usage.
+This is not business logic and not persistence.
+
+When NOT to use @Component
+
+❌ Business logic
+❌ Database access
+❌ Controllers
+
+If you use @Component everywhere, your layers mean nothing.
+
+3️⃣ @Service (BUSINESS LOGIC LAYER)
+What it means
+
+@Service says:
+
+“This class contains business logic and orchestrates workflows.”
+
+This is where:
+
+Validation lives
+Rules live
+Transactions usually start
+
+Spring does not add magic behavior by default —
+but frameworks and teams rely on this semantic.
+
+Example
+@Service
+public class OrderService {
+
+    private final OrderRepository orderRepository;
+
+    public OrderService(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+
+    public OrderDto placeOrder(CreateOrderDto dto) {
+        validate(dto);
+        Order order = map(dto);
+        return orderRepository.save(order);
+    }
+}
+
+
+This is clean service design:
+
+No HTTP
+No SQL
+No framework noise
+
+Why @Service matters
+
+Transaction boundaries (@Transactional) usually start here
+Easier AOP targeting
+Clear architectural intent
+
+Senior rule:
+
+Controllers delegate. Services decide. Repositories persist.
+
+4️⃣ @Repository (PERSISTENCE LAYER)
+What it REALLY does (important)
+
+@Repository is NOT just semantic.
+
+It provides exception translation.
+
+Spring wraps persistence exceptions and converts:
+
+SQLException
+HibernateException
+
+into:
+
+DataAccessException (unchecked)
+
+This is huge.
+
+Example
+@Repository
+public class OrderRepository {
+
+    @PersistenceContext
+    private EntityManager em;
+
+    public Order save(Order order) {
+        em.persist(order);
+        return order;
+    }
+}
+
+
+If DB fails:
+
+You get consistent Spring exceptions
+Not vendor-specific junk
+
+Spring Data JPA case
+@Repository
+public interface OrderRepository extends JpaRepository<Order, Long> {
+}
+
+
+Even though you don’t write code, @Repository semantics still apply.
+
+5️⃣ Clear Comparison (INTERVIEW-READY TABLE)
+Aspect	@Component	@Service	@Repository
+Layer	Generic	Business	Persistence
+Purpose	Infrastructure	Business logic	Data access
+Exception translation	❌ No	❌ No	✅ Yes
+Semantic meaning	Weak	Strong	Strong
+AOP targeting	Rare	Common	Common
+
+Senior statement:
+
+All are components, but not all components are services or repositories.
+
+6️⃣ Common Catches & Misuse (THIS MATTERS)
+❌ Catch 1: Repositories with business logic
+@Repository
+public class OrderRepository {
+    public void validateOrder() ❌
+}
+
+
+Wrong layer.
+Persistence should not decide rules.
+
+❌ Catch 2: Services doing SQL
+@Service
+public class OrderService {
+    jdbcTemplate.query("SELECT ...") ❌
+}
+
+
+You just killed separation of concerns.
+
+❌ Catch 3: Everything annotated as @Component
+
+This tells reviewers:
+
+“I don’t care about architecture.”
+
+❌ Catch 4: Controllers calling repositories directly
+@RestController
+public class OrderController {
+    private OrderRepository repo; ❌
+}
+
+
+You skipped business rules.
+This causes untestable and brittle APIs.
+
+7️⃣ Notes-Friendly Summary (write this verbatim)
+@Component  -> Generic Spring bean (no clear layer)
+@Service    -> Business logic layer
+@Repository -> Persistence layer (exception translation)
+
+Key rule:
+Controllers delegate
+Services decide
+Repositories persist
