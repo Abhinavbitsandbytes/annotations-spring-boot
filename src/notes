@@ -1079,3 +1079,187 @@ If you don’t know this, you don’t control injection.
 
 Key rule:
 Spring injects by type first, qualifier second
+
+
+-------------------------------------------------------------------
+
+@Controller
+1️⃣ Theory (what @Controller REALLY is)
+
+@Controller marks a class as a Spring MVC controller.
+
+Meaning:
+
+This class handles HTTP requests and returns a view (HTML, JSP, Thymeleaf, etc.)
+
+Key point most people miss:
+
+@Controller is for server-side rendered applications, NOT REST APIs.
+
+Technically:
+
+@Controller = @Component + MVC semantics
+
+Detected via component scanning
+
+Works only when Spring MVC is enabled (via auto-config or @EnableWebMvc)
+
+2️⃣ Code Snippets (correct usage)
+Basic MVC Controller
+@Controller
+public class HomeController {
+
+    @GetMapping("/home")
+    public String home(Model model) {
+        model.addAttribute("message", "Hello World");
+        return "home"; // view name
+    }
+}
+
+
+What happens:
+
+/home → controller method
+
+Returns "home"
+
+View resolver maps it to:
+
+home.html (Thymeleaf)
+
+home.jsp (JSP)
+
+etc.
+
+👉 Return value is NOT JSON
+
+With request parameters
+@Controller
+public class UserController {
+
+    @GetMapping("/user")
+    public String getUser(@RequestParam String name, Model model) {
+        model.addAttribute("name", name);
+        return "user";
+    }
+}
+
+Redirects & forwards
+return "redirect:/login";
+return "forward:/internal";
+
+
+These are MVC concepts, not REST concepts.
+
+3️⃣ Interview Perspective (expected answers)
+Q1: What is @Controller?
+
+✅ Correct:
+
+A Spring MVC stereotype annotation used to define web controllers that return views.
+
+Q2: Difference between @Controller and @RestController?
+Aspect	@Controller	@RestController
+Purpose	MVC	REST API
+Return type	View name	Response body
+JSON default	❌ No	✅ Yes
+@ResponseBody needed	Yes	No
+
+Senior-level line:
+
+@RestController = @Controller + @ResponseBody
+
+Q3: Can @Controller return JSON?
+
+✅ Yes — but only if you use @ResponseBody:
+
+@GetMapping("/data")
+@ResponseBody
+public User getData() {
+    return new User("John");
+}
+
+
+If you forget @ResponseBody → Spring looks for a view named "User".
+
+Q4: Is @Controller a Spring bean?
+
+✅ Yes. It’s detected via @ComponentScan.
+
+4️⃣ Common Catches & Confusions (THIS IS IMPORTANT)
+❌ Confusion 1: Using @Controller for REST APIs
+@Controller
+public class ApiController {
+    @GetMapping("/users")
+    public List<User> users() { ... } ❌
+}
+
+
+Without @ResponseBody:
+
+Spring tries to resolve a view called users
+
+Result: 404 / ViewNotFound
+
+Fix:
+
+Use @RestController
+
+OR add @ResponseBody
+
+❌ Confusion 2: Returning objects without message converters
+
+JSON conversion requires:
+
+Jackson on classpath
+
+MVC auto-configuration
+
+Without it → runtime failure.
+
+❌ Confusion 3: Mixing MVC and REST in same controller
+@Controller
+public class MixedController {
+    @GetMapping("/page") return "page";
+    @GetMapping("/api") @ResponseBody return data;
+}
+
+
+This works — but it’s bad design.
+
+Separate:
+
+MVC controllers
+
+REST controllers
+
+❌ Confusion 4: Controller ≠ Business Logic
+
+Putting logic here:
+
+@Controller
+public class OrderController {
+    public String placeOrder() {
+        // 200 lines of logic ❌
+    }
+}
+
+
+Controllers should:
+
+Validate input
+
+Delegate to services
+
+Map responses
+
+Anything else = architectural laziness.
+
+5️⃣ Notes-Friendly Summary (copy exactly)
+@Controller
+- Handles HTTP requests
+- Used in Spring MVC
+- Returns view names by default
+- Requires @ResponseBody for JSON
+- Discovered via component scanning
+
