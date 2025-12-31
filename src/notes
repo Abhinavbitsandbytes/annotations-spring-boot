@@ -910,3 +910,172 @@ Spring resolving it ≠ good design.
 - Fails if no or multiple matches
 - Best used on constructors
 - Avoid field injection
+
+
+-----------------------------------------------------------
+
+
+@Qualifier
+1️⃣ Theory (what @Qualifier REALLY does)
+
+@Qualifier is used to disambiguate beans when multiple beans of the same type exist.
+
+It tells Spring:
+
+“When injecting by type is ambiguous, use this specific bean.”
+
+Key fact (non-negotiable):
+
+@Qualifier works ONLY with @Autowired (or constructor injection)
+It does NOT create beans. It does NOT change scanning.
+
+Why @Qualifier exists
+
+Spring’s default resolution:
+
+By type
+If multiple → ❌ failure
+@Qualifier narrows it down
+
+Without it, Spring refuses to guess — and that’s good.
+
+2️⃣ Code Snippets (real scenarios)
+Multiple beans of same type (problem)
+@Component
+public class PetrolEngine implements Engine {}
+
+@Component
+public class DieselEngine implements Engine {}
+
+
+Injection:
+
+@Autowired
+private Engine engine; ❌
+
+
+Result:
+
+NoUniqueBeanDefinitionException
+
+
+Spring is right. You were vague.
+
+Fix using @Qualifier
+@Autowired
+@Qualifier("petrolEngine")
+private Engine engine;
+
+
+Now Spring knows exactly what you want.
+
+Constructor injection (BEST PRACTICE)
+@Service
+public class CarService {
+
+    private final Engine engine;
+
+    public CarService(@Qualifier("dieselEngine") Engine engine) {
+        this.engine = engine;
+    }
+}
+
+
+This is clean, explicit, and testable.
+
+Custom qualifier value
+@Component("fastEngine")
+public class TurboEngine implements Engine {}
+
+@Qualifier("fastEngine")
+private Engine engine;
+
+
+Bean name and qualifier must match.
+
+3️⃣ Interview Perspective (expected answers)
+Q1: Why do we need @Qualifier?
+
+✅ Correct:
+To resolve ambiguity when multiple beans of the same type exist.
+
+Q2: What happens without @Qualifier?
+✅ Correct:
+
+Spring throws NoUniqueBeanDefinitionException.
+
+Q3: Difference between @Qualifier and @Primary?
+Aspect	@Qualifier	@Primary
+Scope	Local (injection point)	Global
+Explicit	Yes	Implicit
+Overrides	No	Yes
+Best for	Precise control	Default choice
+
+Senior answer:
+
+Use @Primary sparingly, @Qualifier explicitly.
+
+Q4: Can @Qualifier be used on methods?
+
+✅ Yes:
+
+@Bean
+@Qualifier("secureEngine")
+public Engine engine() {
+    return new SecureEngine();
+}
+
+4️⃣ Common Catches & Confusions (THIS IS WHERE PEOPLE FAIL)
+❌ Confusion 1: @Qualifier = bean name
+
+Mostly true — but not always.
+
+By default → matches bean name
+
+Can also match custom qualifier annotations (advanced)
+
+Don’t oversimplify in interviews.
+
+❌ Confusion 2: Using @Qualifier without multiple beans
+@Qualifier("engine")
+@Autowired
+private Engine engine;
+
+
+This is noise if only one bean exists.
+
+Using it everywhere = design paranoia.
+
+❌ Confusion 3: Misspelling qualifier value
+@Qualifier("dieselEngin") ❌
+
+
+Spring won’t warn you.
+It will just fail at startup.
+
+This is why string-based qualifiers are risky.
+
+❌ Confusion 4: Mixing @Primary and @Qualifier
+@Primary
+@Component
+class A implements Engine {}
+
+@Qualifier("b")
+@Component
+class B implements Engine {}
+
+
+Injection with @Qualifier("b")
+👉 Qualifier always wins
+
+If you don’t know this, you don’t control injection.
+
+5️⃣ Notes-Friendly Summary (write verbatim)
+@Qualifier
+- Resolves ambiguity between beans of same type
+- Used with @Autowired / constructor injection
+- Matches bean name by default
+- Overrides @Primary at injection point
+
+Key rule:
+Spring injects by type first, qualifier second

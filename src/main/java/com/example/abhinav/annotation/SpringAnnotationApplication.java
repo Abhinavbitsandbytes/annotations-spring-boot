@@ -20,6 +20,9 @@ public class SpringAnnotationApplication {
 		System.out.println(bean);
 
 		bean.getProductService().createProduct();
+
+		bean.getCartService().addToCart();
+//		error - Field cartService in com.example.abhinav.annotation.services.CategoryService required a single bean, but 2 were found:
 	}
 
 

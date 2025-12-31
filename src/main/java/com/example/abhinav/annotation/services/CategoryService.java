@@ -9,6 +9,17 @@ public class CategoryService {
     @Autowired
     private ProductService productService;
 
+    @Autowired
+    private CartService cartService;
+
+    public CartService getCartService() {
+        return cartService;
+    }
+    public void setCartService(CartService cartService) {
+        this.cartService = cartService;
+    }
+
+
     public ProductService getProductService() {
         return productService;
     }
